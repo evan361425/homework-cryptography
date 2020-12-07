@@ -1,7 +1,7 @@
 {
-  "name": "hash-video",
+  "name": "cryptography-homework",
   "version": "1.0.0",
-  "description": "cryptography homework week 3",
+  "description": "cryptography homework",
   "main": "src/index.js",
   "dependencies": {},
   "devDependencies": {
