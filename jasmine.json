@@ -2,5 +2,8 @@
   "spec_dir": "src",
   "spec_files": [
     "**/*.js"
+  ],
+  "helpers": [
+    "helper.js"
   ]
 }

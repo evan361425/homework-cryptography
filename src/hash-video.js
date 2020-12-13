@@ -1,29 +1,40 @@
-const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { joinPath, readFile, writeFile } = require('./helper');
 
-const blockSize = 1024;
+/** @var {string} used folder */
+const FOLDER = 'hash-video';
+/** @var {string} get videos name and expect tag */
+const CONFIG_PATH = `${FOLDER}/config.json`;
+/** @var {string} file to output */
+const OUTPUT_PATH = `${FOLDER}/result.json`;
+/** @var {number} block size */
+const BLOCK_SIZE = 1024;
 
-describe('Video hash', () => {
-  it('check for testing', () => {
-    return getBlocksFromVideo('../data/hash-video/6.2.birthday.mp4')
-      .then(blocks => {
+describe('Video Hash Block By Block', () => {
+  const config = readFile(CONFIG_PATH);
+
+  it('check algorithm is correct', () => {
+    return getBlocksFromVideo(joinPath(`${FOLDER}/${config.check.video}`))
+      .then((blocks) => {
         const tag = getTagOnFirstBlockWithPrevTag(blocks);
-        expect(tag).toBe('03c08f4ee0b576fe319338139c045c89c3e8e9409633bea29442e21425006ea8');
+
+        expect(tag).toBe(config.check.tag);
       })
-      .catch(err => {
+      .catch((err) => {
         fail(err);
       });
   });
 
-  it('get result', () => {
-    return getBlocksFromVideo('../data/hash-video/6.1.intro.mp4')
-      .then(blocks => {
+  it('get tag of video', () => {
+    return getBlocksFromVideo(joinPath(`${FOLDER}/${config.test.video}`))
+      .then((blocks) => {
         const tag = getTagOnFirstBlockWithPrevTag(blocks);
+        writeFile(OUTPUT_PATH, tag);
+
         expect(tag).toBeTruthy();
-        console.log(`hash tag answer is:\n${tag}`);
       })
-      .catch(err => {
+      .catch((err) => {
         fail(err);
       });
   });
@@ -32,13 +43,12 @@ describe('Video hash', () => {
 
 function getBlocksFromVideo(filePath) {
   return new Promise((resolve, reject) => {
-    filePath = path.join(__dirname, filePath);
     const readStream = fs.createReadStream(filePath, {
-      highWaterMark: blockSize,
+      highWaterMark: BLOCK_SIZE,
     });
     const blocks = [];
 
-    readStream.on('data', block => {
+    readStream.on('data', (block) => {
       blocks.push(block);
     });
 

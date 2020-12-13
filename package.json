@@ -3,16 +3,19 @@
   "version": "1.0.0",
   "description": "cryptography homework",
   "main": "src/index.js",
-  "dependencies": {},
   "devDependencies": {
-    "eslint": "^7.15.0",
-    "jasmine": "^3.6.3"
+    "eslint": "7.15.0",
+    "eslint-config-google": "0.14.0",
+    "eslint-plugin-jasmine": "4.1.1",
+    "jasmine": "3.6.3"
   },
   "scripts": {
+    "lint": "eslint src/*.js",
     "test": "jasmine --config=jasmine.json",
-    "hash": "jasmine src/hash-video.js",
-    "mta": "jasmine src/many-time-attack.js"
+    "hash-video": "jasmine src/hash-video.js",
+    "many-time-attack": "jasmine src/many-time-attack.js"
   },
   "author": "Shueh Chou Lu <evanlu361425@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {}
 }

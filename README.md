@@ -1,5 +1,5 @@
 # cryptography-homework
-[Coursera](cryptography) 的密碼學課程功課。
+[Coursera](https://www.coursera.org/learn/crypto) 的密碼學課程功課。
 
 ## 目錄
 
@@ -26,9 +26,9 @@ $ npm install
 
 ```shell
 # only many time attack
-$ npm run mta
+$ npm run many-time-attack
 # hashing video
-$ npm run hash
+$ npm run hash-video
 # all test
 $ npm run test
 ```
@@ -36,13 +36,9 @@ $ npm run test
 ## 下載測試檔案
 
 ### Hashing Videos
-- [Unkown MAC video](unknown-hash-video)
-- [Testing MAC video](test-hash-video)
+- [Unkown MAC video](https://crypto.stanford.edu/~dabo/onlineCrypto/6.1.intro.mp4_download)
+- [Testing MAC video](https://crypto.stanford.edu/~dabo/onlineCrypto/6.2.birthday.mp4_download)
 
 ## 授權
 
 請看 [LICENSE](./LICENSE)。
-
-[cryptography]: https://www.coursera.org/learn/crypto
-[unknown-hash-video]: https://crypto.stanford.edu/~dabo/onlineCrypto/6.1.intro.mp4_download
-[test-hash-video]: https://crypto.stanford.edu/~dabo/onlineCrypto/6.2.birthday.mp4_download
