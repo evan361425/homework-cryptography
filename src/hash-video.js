@@ -12,7 +12,10 @@ const OUTPUT_PATH = `${FOLDER}/result.json`;
 const BLOCK_SIZE = 1024;
 
 describe('Video Hash Block By Block', () => {
-  const config = readFile(CONFIG_PATH);
+  let config;
+  beforeAll(() => {
+    config = readFile(CONFIG_PATH);
+  });
 
   it('check algorithm is correct', () => {
     return getBlocksFromVideo(joinPath(`${FOLDER}/${config.check.video}`))

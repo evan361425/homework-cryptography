@@ -29,6 +29,8 @@ $ npm install
 $ npm run many-time-attack
 # hashing video
 $ npm run hash-video
+# only padding oracle attack
+$ npm run padding-oracle-attack
 # all test
 $ npm run test
 ```

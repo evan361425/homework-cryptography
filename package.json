@@ -13,7 +13,8 @@
     "lint": "eslint src/*.js",
     "test": "jasmine --config=jasmine.json",
     "hash-video": "jasmine src/hash-video.js",
-    "many-time-attack": "jasmine src/many-time-attack.js"
+    "many-time-attack": "jasmine src/many-time-attack.js",
+    "padding-oracle-attack": "jasmine src/padding-oracle-attack.js"
   },
   "author": "Shueh Chou Lu <evanlu361425@gmail.com>",
   "license": "MIT",

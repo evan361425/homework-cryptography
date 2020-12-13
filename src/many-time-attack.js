@@ -1,4 +1,4 @@
-const { readFile, writeFile } = require('./helper');
+const { readFile, writeFile, strReplace, xorHexStringToChar } = require('./helper');
 
 /** @var {string} used folder */
 const FOLDER = 'many-time-attack';
@@ -37,17 +37,16 @@ describe('Many time attack', () => {
 });
 
 /**
- * Get possibly space in cypher from {countCharAfterXorEachCypher},
+ * Get possibly space in cypher from {@link countCharAfterXorEachCypher},
  * If c is space, p is plain text of c, k is key:
  * c XOR space = p XOR k XOR space = k
  *
  * But if two p[1], p[2] are both space
  * c[1] XOR c[2] = 0
- * So need {matchedThreshold},
+ * So need {@link matchedThreshold},
  *
  * Finally padding zero if can't find key.
  *
- * @see {@link countCharAfterXorEachCypher}
  * @param  {array} cyphers
  * @return {string}
  */
@@ -99,17 +98,6 @@ function countCharAfterXorEachCypher(counter, cypher, cyphers) {
     });
 }
 
-/**
- * Replace substring from start to replacement length
- * @param  {string} str     original string
- * @param  {string} replace replacement
- * @param  {int} start      start to replace
- * @return {string}         new string
- */
-function strReplace(str, replace, start) {
-  return str.slice(0, start) + replace + str.slice(start + replace.length);
-}
-
 function xorStrWithSpaceToChar(str) {
   const spaces = '20'.repeat(str.length / 2);
   return xorHexStringToChar(str, spaces);
@@ -120,26 +108,8 @@ function charCodeIsAlpha(code) {
     (code > 96 && code < 123); // a-z
 }
 
-function xorHexStringToChar(str1, str2) {
-  const maxLength = Math.min(str1.length, str2.length);
-  let num1;
-  let num2;
-  let result = '';
-
-  for (let charIndex = 0; charIndex < maxLength; charIndex += 2) {
-    num1 = hexToNumber(str1[charIndex] + str1[charIndex+1]);
-    num2 = hexToNumber(str2[charIndex] + str2[charIndex+1]);
-    result += String.fromCharCode(num1 ^ num2);
-  }
-  return result;
-}
-
 function charToHex(str) {
   return str.charCodeAt(0).toString(16);
-}
-
-function hexToNumber(str) {
-  return parseInt(str, 16);
 }
 
 function replaceUnalphaToStar(str) {
