@@ -7,10 +7,15 @@ function joinPath(fileName) {
 
 function readFile(fileName) {
   fileName = joinPath(fileName);
-  const text = fs.readFileSync(fileName).toString();
+
+  if (!fs.existsSync(fileName)) {
+    return pending(`Can't find file ${fileName}`);
+  }
+
+  const raw = fs.readFileSync(fileName).toString();
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(raw);
   } catch (e) {
     throw new Error(`${fileName} must contain JSON formated data`);
   }
@@ -23,36 +28,69 @@ function writeFile(fileName, data) {
 
 /**
  * Replace substring from start to replacement length
- * @param  {string} str     original string
- * @param  {string} replace replacement
- * @param  {int} start      start to replace
- * @return {string}         new string
+ * @param  {string} origin      original string
+ * @param  {string} replacement replacement
+ * @param  {int} startFrom      default is replace to last char
+ * @return {string}             new string
  */
-function strReplace(str, replace, start) {
-  return str.slice(0, start) + replace + str.slice(start + replace.length);
-}
-
-function xorHexStringToChar(str1, str2, toHex = false) {
-  const maxLength = Math.min(str1.length, str2.length);
-  let num1;
-  let num2;
-  let result = '';
-
-  for (let charIndex = 0; charIndex < maxLength; charIndex += 2) {
-    num1 = hexToNumber(str1[charIndex] + str1[charIndex+1]);
-    num2 = hexToNumber(str2[charIndex] + str2[charIndex+1]);
-    result += toHex ? numberToHex(num1 ^ num2) : String.fromCharCode(num1 ^ num2);
+function strReplace(origin, replacement, startFrom) {
+  if (startFrom === undefined) {
+    startFrom = origin.length - replacement.length;
   }
-  return result;
+
+  return origin.slice(0, startFrom) +
+    replacement +
+    origin.slice(startFrom + replacement.length);
 }
 
-function hexToNumber(str) {
-  return parseInt(str, 16);
+class HexStr {
+  constructor(value) {
+    this.value = value;
+    this.num = this.toNumber();
+  }
+
+  toArray() {
+    const result = this.value.match(/.{2}/g);
+    return result === null ? [] : result;
+  }
+
+  toNumber() {
+    return this.toArray(this.value).map((hex) => parseInt(hex, 16));
+  }
+
+  toChar() {
+    return this.num.map((num) => String.fromCharCode(num));
+  }
+
+  xorWith(strOrHex) {
+    // check if is number
+    if (strOrHex.toFixed) {
+      strOrHex = strOrHex.toHex();
+    }
+    // check is HexStr or String
+    const nums = (typeof strOrHex === 'string' || strOrHex instanceof String) ?
+      strOrHex.toHex().num :
+      strOrHex.num;
+
+    return this.num
+      .map((num1, i) => nums[i] === undefined ? null : num1 ^ nums[i])
+      .filter((el) => el !== null)
+      .map((num) => num.toHex())
+      .join('');
+  }
 }
 
-function numberToHex(number) {
-  return number.toString(16).padStart(2, '0');
-}
+/* eslint-disable */
+String.prototype.toHex = function(index) {
+  if (index === undefined) {
+    return new HexStr(this);
+  }
+  const char = (new HexStr(this)).toArray()[index];
+  return char ? new HexStr(char) : new HexStr('');
+};
+Number.prototype.toHex = function() {
+  return this.toString(16).padStart(2, '0');
+};
+/* eslint-enable */
 
-
-module.exports = { joinPath, readFile, writeFile, strReplace, xorHexStringToChar, numberToHex, hexToNumber };
+module.exports = { joinPath, readFile, writeFile, strReplace, HexStr };

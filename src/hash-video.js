@@ -12,13 +12,40 @@ const OUTPUT_PATH = `${FOLDER}/result.json`;
 const BLOCK_SIZE = 1024;
 
 describe('Video Hash Block By Block', () => {
-  let config;
-  beforeAll(() => {
-    config = readFile(CONFIG_PATH);
+  let shouldPending = false;
+
+  it('should found config file', () => {
+    const config = readFile(CONFIG_PATH);
+
+    expect(config).toBeTruthy();
+    shouldPending = false;
   });
 
-  it('check algorithm is correct', () => {
-    return getBlocksFromVideo(joinPath(`${FOLDER}/${config.check.video}`))
+  it('should found test video', () => {
+    const config = readFile(CONFIG_PATH);
+
+    expect(config.test).toBeTruthy();
+
+    const videoPath = joinPath(`${FOLDER}/${config.test.video}`);
+    if (!fs.existsSync(videoPath)) {
+      return pending(`Can't find video ${videoPath}`);
+    }
+    shouldPending = false;
+  });
+
+  it('run on check video', () => {
+    shouldPending = false;
+    const config = readFile(CONFIG_PATH);
+    if (!config.check || !config.check.video || !config.check.tag) {
+      return;
+    }
+
+    const videoPath = joinPath(`${FOLDER}/${config.check.video}`);
+    if (!fs.existsSync(videoPath)) {
+      return;
+    }
+
+    return getBlocksFromVideo(videoPath)
       .then((blocks) => {
         const tag = getTagOnFirstBlockWithPrevTag(blocks);
 
@@ -29,8 +56,11 @@ describe('Video Hash Block By Block', () => {
       });
   });
 
-  it('get tag of video', () => {
-    return getBlocksFromVideo(joinPath(`${FOLDER}/${config.test.video}`))
+  it('run on test video', () => {
+    const config = readFile(CONFIG_PATH);
+    const videoPath = joinPath(`${FOLDER}/${config.test.video}`);
+
+    return getBlocksFromVideo(videoPath)
       .then((blocks) => {
         const tag = getTagOnFirstBlockWithPrevTag(blocks);
         writeFile(OUTPUT_PATH, tag);
@@ -40,6 +70,20 @@ describe('Video Hash Block By Block', () => {
       .catch((err) => {
         fail(err);
       });
+  });
+
+  beforeEach(() => {
+    if (shouldPending) {
+      pending('you should handle up the environment');
+    }
+    shouldPending = true;
+  });
+
+  afterAll(() => {
+    if (!shouldPending) {
+      const result = readFile(OUTPUT_PATH);
+      console.log(`\nFound first block's tag:\n${result}`);
+    }
   });
 });
 

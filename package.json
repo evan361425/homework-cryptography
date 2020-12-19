@@ -1,22 +1,23 @@
 {
-  "name": "cryptography-homework",
-  "version": "1.0.0",
+  "author": "Shueh Chou Lu <evanlu361425@gmail.com>",
+  "dependencies": {
+  },
   "description": "cryptography homework",
-  "main": "src/index.js",
   "devDependencies": {
     "eslint": "7.15.0",
     "eslint-config-google": "0.14.0",
     "eslint-plugin-jasmine": "4.1.1",
     "jasmine": "3.6.3"
   },
-  "scripts": {
-    "lint": "eslint src/*.js",
-    "test": "jasmine --config=jasmine.json",
-    "hash-video": "jasmine src/hash-video.js",
-    "many-time-attack": "jasmine src/many-time-attack.js",
-    "padding-oracle-attack": "jasmine src/padding-oracle-attack.js"
-  },
-  "author": "Shueh Chou Lu <evanlu361425@gmail.com>",
   "license": "MIT",
-  "dependencies": {}
+  "main": "src/index.js",
+  "name": "cryptography-homework",
+  "scripts": {
+    "hash-video": "jasmine src/hash-video.js --config=jasmine.json",
+    "lint": "eslint src/*.js",
+    "many-time-attack": "jasmine src/many-time-attack.js --config=jasmine.json",
+    "padding-oracle-attack": "jasmine src/padding-oracle-attack.js --config=jasmine.json",
+    "test": "jasmine --config=jasmine.json"
+  },
+  "version": "1.0.0"
 }

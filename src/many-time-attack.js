@@ -1,4 +1,4 @@
-const { readFile, writeFile, strReplace, xorHexStringToChar } = require('./helper');
+const { readFile, writeFile, strReplace } = require('./helper');
 
 /** @var {string} used folder */
 const FOLDER = 'many-time-attack';
@@ -11,28 +11,49 @@ const OUTPUT_PATH = `${FOLDER}/result.json`;
 /** @var {number} rate to consider space */
 const MATCHED_RATE = 0.7;
 
-describe('Many time attack', () => {
-  it('must contain enough data to decrypt', () => {
+describe('Many Time Attack', () => {
+  let shouldPending = false;
+
+  it('should contain at least 10 cyphers to correctly find key', () => {
     const cyphers = readFile(TRAIN_PATH);
 
     expect(cyphers.length).toBeGreaterThan(9);
+    shouldPending = false;
   });
 
-  it('try decrypt testing cyphertext', () => {
-    const testing = readFile(TEST_PATH);
+  it('should contain at least 1 testing cypher', () => {
+    const cyphers = readFile(TEST_PATH);
+
+    expect(cyphers.length).toBeGreaterThan(0);
+    shouldPending = false;
+  });
+
+  it('start running', async () => {
     const cyphers = readFile(TRAIN_PATH);
+    const testing = readFile(TEST_PATH);
 
-    const secretKey = getSecretKeyByManyTimeAttack(cyphers);
+    const secretKey = await getSecretKeyByManyTimeAttack(cyphers);
 
-    const guessResult = [];
-    let guessPlainText;
-    testing.forEach((testCypher) => {
-      guessPlainText = xorHexStringToChar(testCypher, secretKey);
-      guessResult.push(replaceUnalphaToStar(guessPlainText));
-    });
+    const guessResult = testing.map((testCypher) =>
+      replaceUnalphaToStar(testCypher.toHex().xorWith(secretKey)),
+    );
+
+    console.log(`Found decrypted plain text:\n${guessResult}`);
     writeFile(OUTPUT_PATH, guessResult);
+  });
 
-    expect(guessPlainText).toBeTruthy();
+  beforeEach(() => {
+    if (shouldPending) {
+      pending('you should handle up the environment');
+    }
+    shouldPending = true;
+  });
+
+  afterAll(() => {
+    if (!shouldPending) {
+      const result = readFile(OUTPUT_PATH);
+      console.log(`\nFound guessing cypher:\n${result}`);
+    }
   });
 });
 
@@ -50,24 +71,30 @@ describe('Many time attack', () => {
  * @param  {array} cyphers
  * @return {string}
  */
-function getSecretKeyByManyTimeAttack(cyphers) {
+async function getSecretKeyByManyTimeAttack(cyphers) {
   const guessSecretKey = {};
   const matchedThreshold = cyphers.length * MATCHED_RATE;
   cyphers.forEach((cypher) => {
-    const charCounter = {};
-    countCharAfterXorEachCypher(charCounter, cypher, cyphers);
+    const charCounter = countCharAfterXorEachCypher(cypher, cyphers);
+    const cypherWithSpace = cypher.toHex()
+      .xorWith('20'.repeat(cypher.length / 2))
+      .toHex()
+      .num;
 
-    cypherWithSpace = xorStrWithSpaceToChar(cypher);
     for (const [position, count] of Object.entries(charCounter)) {
       if (count >= matchedThreshold) {
-        guessSecretKey[position] = charToHex(cypherWithSpace.charAt(position));
+        guessSecretKey[position] = cypherWithSpace[position];
       }
     }
   });
 
   let keyWithUnknown = '00'.repeat(150);
   for (const [position, value] of Object.entries(guessSecretKey)) {
-    keyWithUnknown = strReplace(keyWithUnknown, value, position * 2);
+    keyWithUnknown = strReplace(
+      keyWithUnknown,
+      value.toString(16).padStart(2, '0'),
+      position * 2,
+    );
   }
 
   return keyWithUnknown;
@@ -80,27 +107,26 @@ function getSecretKeyByManyTimeAttack(cyphers) {
  * After XOR many cypher with specific cypher and get alphabet many times,
  * we can say that this position of cypher might be a space, and other is the text after we XOR.
  *
- * @param  {object} counter record count on alpha in XORed string
  * @param  {string} cypher  cypher we want to test
  * @param  {array} cyphers other cypher to XOR
  * @return {void}
  */
-function countCharAfterXorEachCypher(counter, cypher, cyphers) {
+function countCharAfterXorEachCypher(cypher, cyphers) {
+  const counter = {};
+  const cypherHex = cypher.toHex();
+
   cyphers
     .filter((c) => c !== cypher)
     .forEach((c, index) => {
-      xoredStr = xorHexStringToChar(c, cypher);
-      for (let index = 0, length = xoredStr.length; index < length; index++) {
-        if (charCodeIsAlpha(xoredStr.charCodeAt(index))) {
-          counter[index] = counter[index] ? counter[index] + 1 : 1;
-        }
-      }
+      cypherHex.xorWith(c).toHex().num
+        .forEach((charCode, index) => {
+          if (charCodeIsAlpha(charCode)) {
+            counter[index] = counter[index] ? counter[index] + 1 : 1;
+          }
+        });
     });
-}
 
-function xorStrWithSpaceToChar(str) {
-  const spaces = '20'.repeat(str.length / 2);
-  return xorHexStringToChar(str, spaces);
+  return counter;
 }
 
 function charCodeIsAlpha(code) {
@@ -108,16 +134,13 @@ function charCodeIsAlpha(code) {
     (code > 96 && code < 123); // a-z
 }
 
-function charToHex(str) {
-  return str.charCodeAt(0).toString(16);
-}
-
 function replaceUnalphaToStar(str) {
-  for (let i = 0, length = str.length; i < length; i++) {
-    // not alpha and also not white space
-    if (!charCodeIsAlpha(str.charCodeAt(i)) && str.charCodeAt(i) !== 32) {
-      str = strReplace(str, '*', i);
-    }
-  }
-  return str;
+  const hex = str.toHex();
+  const rawStr = hex.toChar();
+
+  return hex.num.map((charCode, index) =>
+    charCodeIsAlpha(charCode) || charCode === 32 ?
+      rawStr[index] :
+      '*',
+  ).join('');
 }

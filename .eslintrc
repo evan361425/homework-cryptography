@@ -21,6 +21,8 @@
     "indent": ["error", 2],
     "max-len": ["warn", {"code": 200, "tabWidth": 2}],
     "object-curly-spacing": ["error", "always"],
-    "require-jsdoc": "off"
+    "require-jsdoc": "off",
+    "linebreak-style": 0,
+    "jasmine/no-pending-tests": 0
   }
 }
