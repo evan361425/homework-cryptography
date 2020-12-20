@@ -1,9 +1,9 @@
 {
   "author": "Shueh Chou Lu <evanlu361425@gmail.com>",
-  "dependencies": {
-  },
+  "dependencies": {},
   "description": "cryptography homework",
   "devDependencies": {
+    "big-integer": "1.6.48",
     "eslint": "7.15.0",
     "eslint-config-google": "0.14.0",
     "eslint-plugin-jasmine": "4.1.1",
@@ -17,6 +17,7 @@
     "lint": "eslint src/*.js",
     "many-time-attack": "jasmine src/many-time-attack.js --config=jasmine.json",
     "padding-oracle-attack": "jasmine src/padding-oracle-attack.js --config=jasmine.json",
+    "rsa-meet-in-middle-attack": "jasmine src/rsa-meet-in-middle-attack.js --config=jasmine.json",
     "test": "jasmine --config=jasmine.json"
   },
   "version": "1.0.0"
