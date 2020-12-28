@@ -5,7 +5,7 @@
   ],
   "helpers": [
     "helper.js",
-    "reporter.js"
+    "jasmine-reporter.js"
   ],
   "stopSpecOnExpectationFailure": true,
   "random": false

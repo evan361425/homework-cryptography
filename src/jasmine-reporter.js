@@ -24,6 +24,6 @@ class myReporter {
   static jasmineDone(result) {
     // ...
   }
-};
+}
 
 jasmine.getEnv().addReporter(myReporter);

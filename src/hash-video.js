@@ -5,7 +5,7 @@ const { joinPath, readFile, writeFile } = require('./helper');
 /** @var {string} used folder */
 const FOLDER = 'hash-video';
 /** @var {string} get videos name and expect tag */
-const CONFIG_PATH = `${FOLDER}/config.json`;
+const DATA_PATH = `${FOLDER}/data.json`;
 /** @var {string} file to output */
 const OUTPUT_PATH = `${FOLDER}/result.json`;
 /** @var {number} block size */
@@ -14,19 +14,19 @@ const BLOCK_SIZE = 1024;
 describe('Video Hash Block By Block', () => {
   let shouldPending = false;
 
-  it('should found config file', () => {
-    const config = readFile(CONFIG_PATH);
+  it('should found videos file', () => {
+    const videos = readFile(DATA_PATH);
 
-    expect(config).toBeTruthy();
+    expect(videos).toBeTruthy();
     shouldPending = false;
   });
 
   it('should found test video', () => {
-    const config = readFile(CONFIG_PATH);
+    const videos = readFile(DATA_PATH);
 
-    expect(config.test).toBeTruthy();
+    expect(videos.test).toBeTruthy();
 
-    const videoPath = joinPath(`${FOLDER}/${config.test.video}`);
+    const videoPath = joinPath(`${FOLDER}/${videos.test.video}`);
     if (!fs.existsSync(videoPath)) {
       return pending(`Can't find video ${videoPath}`);
     }
@@ -35,12 +35,12 @@ describe('Video Hash Block By Block', () => {
 
   it('run on check video', () => {
     shouldPending = false;
-    const config = readFile(CONFIG_PATH);
-    if (!config.check || !config.check.video || !config.check.tag) {
+    const videos = readFile(DATA_PATH);
+    if (!videos.check || !videos.check.video || !videos.check.tag) {
       return;
     }
 
-    const videoPath = joinPath(`${FOLDER}/${config.check.video}`);
+    const videoPath = joinPath(`${FOLDER}/${videos.check.video}`);
     if (!fs.existsSync(videoPath)) {
       return;
     }
@@ -49,7 +49,7 @@ describe('Video Hash Block By Block', () => {
       .then((blocks) => {
         const tag = getTagOnFirstBlockWithPrevTag(blocks);
 
-        expect(tag).toBe(config.check.tag);
+        expect(tag).toBe(videos.check.tag);
       })
       .catch((err) => {
         fail(err);
@@ -57,8 +57,8 @@ describe('Video Hash Block By Block', () => {
   });
 
   it('run on test video', () => {
-    const config = readFile(CONFIG_PATH);
-    const videoPath = joinPath(`${FOLDER}/${config.test.video}`);
+    const videos = readFile(DATA_PATH);
+    const videoPath = joinPath(`${FOLDER}/${videos.test.video}`);
 
     return getBlocksFromVideo(videoPath)
       .then((blocks) => {

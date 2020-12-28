@@ -2,10 +2,8 @@ const { readFile, writeFile, strReplace } = require('./helper');
 
 /** @var {string} used folder */
 const FOLDER = 'many-time-attack';
-/** @var {string} file to training cypher text */
-const TRAIN_PATH = `${FOLDER}/train.json`;
-/** @var {string} file to testing cypher text */
-const TEST_PATH = `${FOLDER}/test.json`;
+/** @var {string} file to cypher text */
+const DATA_PATH = `${FOLDER}/data.json`;
 /** @var {string} file to output */
 const OUTPUT_PATH = `${FOLDER}/result.json`;
 /** @var {number} rate to consider space */
@@ -15,27 +13,26 @@ describe('Many Time Attack', () => {
   let shouldPending = false;
 
   it('should contain at least 10 cyphers to correctly find key', () => {
-    const cyphers = readFile(TRAIN_PATH);
+    const cyphers = readFile(DATA_PATH);
 
-    expect(cyphers.length).toBeGreaterThan(9);
+    expect(cyphers.train.length).toBeGreaterThan(9);
     shouldPending = false;
   });
 
   it('should contain at least 1 testing cypher', () => {
-    const cyphers = readFile(TEST_PATH);
+    const cyphers = readFile(DATA_PATH);
 
-    expect(cyphers.length).toBeGreaterThan(0);
+    expect(cyphers.test.length).toBeGreaterThan(0);
     shouldPending = false;
   });
 
   it('start running', async () => {
-    const cyphers = readFile(TRAIN_PATH);
-    const testing = readFile(TEST_PATH);
+    const cyphers = readFile(DATA_PATH);
 
-    const secretKey = await getSecretKeyByManyTimeAttack(cyphers);
+    const secretKey = await getSecretKeyByManyTimeAttack(cyphers.train);
 
-    const guessResult = testing.map((testCypher) =>
-      replaceUnalphaToStar(testCypher.toHex().xorWith(secretKey)),
+    const guessResult = cyphers.test.map((cypher) =>
+      replaceUnalphaToStar(cypher.toHex().xorWith(secretKey)),
     );
 
     console.log(`Found decrypted plain text:\n${guessResult}`);

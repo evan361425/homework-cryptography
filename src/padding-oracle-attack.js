@@ -2,7 +2,7 @@ const http = require('http');
 const { readFile, writeFile } = require('./helper');
 
 const FOLDER = 'padding-oracle-attack';
-const CONFIG_PATH = `${FOLDER}/data.json`;
+const DATA_PATH = `${FOLDER}/data.json`;
 const OUTPUT_PATH = `${FOLDER}/result.json`;
 const BLOCK_SIZE = 32;
 const BLOCK_REG = new RegExp(`.{${BLOCK_SIZE}}`, 'g');
@@ -14,22 +14,22 @@ describe('Padding Oracle Attack', () => {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60 * 60 * 1000;
   });
 
-  it('should found config file and set up correct', () => {
-    const config = readFile(CONFIG_PATH);
+  it('should found data file and set up correct', () => {
+    const data = readFile(DATA_PATH);
 
-    expect(config).toBeTruthy();
-    expect(config.url).toBeTruthy();
-    expect(config.path).toBeTruthy();
-    expect(config.queryKey).toBeTruthy();
-    expect(config.cypher).toBeTruthy();
+    expect(data).toBeTruthy();
+    expect(data.url).toBeTruthy();
+    expect(data.path).toBeTruthy();
+    expect(data.queryKey).toBeTruthy();
+    expect(data.cypher).toBeTruthy();
     shouldPending = false;
   });
 
   it('must get non 404 response status if sending wrong cypher to website', async () => {
-    const config = readFile(CONFIG_PATH);
+    const data = readFile(DATA_PATH);
 
     try {
-      const attacker = new PaddingOracleAttack(config);
+      const attacker = new PaddingOracleAttack(data);
       const decryptSuccess = await attacker.sendRequest('some-random-cypher');
 
       expect(decryptSuccess).toBeFalse();
@@ -40,10 +40,10 @@ describe('Padding Oracle Attack', () => {
   });
 
   it('start!', async () => {
-    const config = readFile(CONFIG_PATH);
+    const data = readFile(DATA_PATH);
 
     try {
-      const attacker = new PaddingOracleAttack(config);
+      const attacker = new PaddingOracleAttack(data);
       const decrypted = await attacker.start();
 
       const plainText = attacker.getPlainText();

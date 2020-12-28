@@ -1,25 +1,54 @@
 const { readFile, writeFile } = require('./helper');
 const bigInt = require('big-integer');
-const workerpool = require('workerpool');
 
 /** @var {string} used folder */
 const FOLDER = 'rsa-meet-in-middle-attack';
 /** @var {string} file to p g h */
-const CONFIG_PATH = `${FOLDER}/config.json`;
+const DATA_PATH = `${FOLDER}/data.json`;
 /** @var {string} file to output */
 const OUTPUT_PATH = `${FOLDER}/result.json`;
-const WORKER_PATH = './src/worker/rsa-meet-in-middle-attack.js';
 
 describe('RSA Meet In Middle Attack', () => {
-  jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
-  it('start!', async () => {
-    const config = readFile(CONFIG_PATH);
+  let shouldPending = false;
 
-    const attacker = new RsaMimAttack(config.g, config.h, config.p, config.keySize);
+  beforeAll(() => {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 60 * 60 * 1000;
+  });
+
+  it('should found data file and set up correct', () => {
+    const data = readFile(DATA_PATH);
+
+    expect(data).toBeTruthy();
+    expect(data.g).toBeTruthy();
+    expect(data.h).toBeTruthy();
+    expect(data.p).toBeTruthy();
+    expect(data.keySize).toBeTruthy();
+    shouldPending = false;
+  });
+
+  it('start!', async () => {
+    const data = readFile(DATA_PATH);
+
+    const attacker = new RsaMimAttack(data.g, data.h, data.p, data.keySize);
     const result = await attacker.attack();
 
     writeFile(OUTPUT_PATH, result);
     console.log(`\nFound result:\n${result}`);
+    shouldPending = false;
+  });
+
+  beforeEach(() => {
+    if (shouldPending) {
+      pending('you should handle up the environment');
+    }
+    shouldPending = true;
+  });
+
+  afterAll(() => {
+    if (!shouldPending) {
+      const result = readFile(OUTPUT_PATH);
+      console.log(`\nFound plain text:\n${result}`);
+    }
   });
 });
 
@@ -51,7 +80,6 @@ class RsaMimAttack {
     this.keySize = keySize;
     this.tableMax = bigInt(2).pow(this.keySize / 2).toJSNumber();
     this.consoleIter = Math.max(Math.floor(this.tableMax / 10), 2);
-    this.pool = workerpool.pool(WORKER_PATH);
   }
 
   async attack() {
