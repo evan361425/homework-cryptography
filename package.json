@@ -18,6 +18,7 @@
     "many-time-attack": "jasmine src/many-time-attack.js --config=jasmine.json",
     "padding-oracle-attack": "jasmine src/padding-oracle-attack.js --config=jasmine.json",
     "rsa-meet-in-middle-attack": "jasmine src/rsa-meet-in-middle-attack.js --config=jasmine.json",
+    "rsa-close-factor-attack": "jasmine src/rsa-close-factor-attack.js --config=jasmine.json",
     "test": "jasmine --config=jasmine.json"
   },
   "version": "1.0.0"

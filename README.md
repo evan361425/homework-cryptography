@@ -18,6 +18,7 @@
 - Hashing Videos - 2020-12-07
 - Padding Oracle Attack - 2020-12-14
 - Meet In Middle Attack in RSA - 2020-12-21
+- Close Factor Attack in RSA - 2020-12-29
 
 ## 安裝
 
@@ -38,6 +39,8 @@ $ npm run hash-video
 $ npm run padding-oracle-attack
 # meet in middle in RSA
 $ npm run rsa-meet-in-middle-attack
+# close factor in RSA
+$ npm run rsa-close-factor-attack
 # test all
 $ npm run test
 ```
@@ -97,6 +100,27 @@ Example:
   "p": "13",
   "keySize": 4
 }
+```
+
+### Close Factor in RSA
+- `data.json` : array of object with `N`, `bound`
+
+Example:
+```json
+[
+  {
+    "N": "323",
+    "bound": 1
+  },
+  {
+    "N": "232166152",
+    "bound": [1, 100]
+  },
+  {
+    "N": "720062263747350425279564435525583738338084451473999841826653057981916355690188337790423408664187663938485175264994017897083524079135686877441155132015188279331812309091996246361896836573643119174094961348524639707885238799396839230364676670221627018353299443241192173812729276147530748597302192751375739387929",
+    "3p+2q": true
+  }
+]
 ```
 
 ## 授權

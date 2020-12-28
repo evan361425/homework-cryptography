@@ -43,13 +43,6 @@ describe('RSA Meet In Middle Attack', () => {
     }
     shouldPending = true;
   });
-
-  afterAll(() => {
-    if (!shouldPending) {
-      const result = readFile(OUTPUT_PATH);
-      console.log(`\nFound plain text:\n${result}`);
-    }
-  });
 });
 
 /**
