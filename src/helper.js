@@ -55,7 +55,7 @@ class HexStr {
   }
 
   toNumber() {
-    return this.toArray(this.value).map((hex) => parseInt(hex, 16));
+    return this.toArray().map((hex) => parseInt(hex, 16));
   }
 
   toChar() {
