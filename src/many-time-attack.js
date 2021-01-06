@@ -1,4 +1,4 @@
-const { readFile, writeFile, strReplace } = require('./helper');
+const { readFile, writeFile, HexStr } = require('./helper');
 
 /** @var {string} used folder */
 const FOLDER = 'many-time-attack';
@@ -32,7 +32,7 @@ describe('Many Time Attack', () => {
     const secretKey = await getSecretKeyByManyTimeAttack(cyphers.train);
 
     const guessResult = cyphers.test.map((cypher) =>
-      replaceUnalphaToStar(cypher.toHex().xorWith(secretKey)),
+      replaceUnalphaToStar(HexStr.instance(cypher).xorWith(secretKey).value),
     );
 
     console.log(`Found decrypted plain text:\n${guessResult}`);
@@ -73,10 +73,9 @@ async function getSecretKeyByManyTimeAttack(cyphers) {
   const matchedThreshold = cyphers.length * MATCHED_RATE;
   cyphers.forEach((cypher) => {
     const charCounter = countCharAfterXorEachCypher(cypher, cyphers);
-    const cypherWithSpace = cypher.toHex()
+    const cypherWithSpace = HexStr.instance(cypher)
       .xorWith('20'.repeat(cypher.length / 2))
-      .toHex()
-      .num;
+      .toNumber();
 
     for (const [position, count] of Object.entries(charCounter)) {
       if (count >= matchedThreshold) {
@@ -87,11 +86,10 @@ async function getSecretKeyByManyTimeAttack(cyphers) {
 
   let keyWithUnknown = '00'.repeat(150);
   for (const [position, value] of Object.entries(guessSecretKey)) {
-    keyWithUnknown = strReplace(
-      keyWithUnknown,
-      value.toString(16).padStart(2, '0'),
-      position * 2,
-    );
+    keyWithUnknown = keyWithUnknown
+      .slice(0, position * 2)
+      .concat(HexStr.instance(value).value)
+      .concat(keyWithUnknown.slice(position * 2 + 2));
   }
 
   return keyWithUnknown;
@@ -110,12 +108,13 @@ async function getSecretKeyByManyTimeAttack(cyphers) {
  */
 function countCharAfterXorEachCypher(cypher, cyphers) {
   const counter = {};
-  const cypherHex = cypher.toHex();
+  const cypherHex = HexStr.instance(cypher);
 
   cyphers
     .filter((c) => c !== cypher)
     .forEach((c, index) => {
-      cypherHex.xorWith(c).toHex().num
+      cypherHex.xorWith(c)
+        .toNumber()
         .forEach((charCode, index) => {
           if (charCodeIsAlpha(charCode)) {
             counter[index] = counter[index] ? counter[index] + 1 : 1;
@@ -132,10 +131,10 @@ function charCodeIsAlpha(code) {
 }
 
 function replaceUnalphaToStar(str) {
-  const hex = str.toHex();
+  const hex = new HexStr(str);
   const rawStr = hex.toChar();
 
-  return hex.num.map((charCode, index) =>
+  return hex.toNumber().map((charCode, index) =>
     charCodeIsAlpha(charCode) || charCode === 32 ?
       rawStr[index] :
       '*',

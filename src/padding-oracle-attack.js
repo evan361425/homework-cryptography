@@ -1,5 +1,5 @@
 const http = require('http');
-const { readFile, writeFile } = require('./helper');
+const { readFile, writeFile, HexStr } = require('./helper');
 
 const FOLDER = 'padding-oracle-attack';
 const DATA_PATH = `${FOLDER}/data.json`;
@@ -48,7 +48,7 @@ describe('Padding Oracle Attack', () => {
 
       const plainText = attacker.getPlainText();
 
-      expect(plainText.length).toBe(decrypted.length / 2);
+      expect(plainText.length + attacker.correctPad).toBe(decrypted.length / 2);
       writeFile(OUTPUT_PATH, plainText);
       shouldPending = false;
     } catch (err) {
@@ -92,7 +92,7 @@ class PaddingOracleAttack {
     const doneBlock = Math.floor(decrypted.length / BLOCK_SIZE);
     this.decrypteds = decrypted.slice(-doneBlock * BLOCK_SIZE).match(BLOCK_REG);
     this.decrypteds = this.decrypteds ? this.decrypteds : [];
-    this.decrypted = decrypted.slice(0, -doneBlock * BLOCK_SIZE);
+    this.decrypted = decrypted.slice(0, decrypted.length - doneBlock * BLOCK_SIZE);
     this.paddingValue = this.decrypted.length / 2 + 1;
     this.hexIndex = BLOCK_SIZE - this.paddingValue * 2;
     // 1~cyphers.length-1
@@ -154,14 +154,15 @@ class PaddingOracleAttack {
     }
 
     const preNoNeed = '0'.repeat(this.hexIndex);
-    const postPaddedCorrect = '00'.toHex()
+    const paddingCorrect = HexStr.instance('00')
       .xorWith(this.paddingValue)
-      .repeat(this.paddingValue - 1)
-      .toHex()
+      .value
+      .repeat(this.paddingValue - 1);
+    const postPaddedCorrect = HexStr.instance(paddingCorrect)
       .xorWith(this.decrypted)
+      .value
       // post cypher block, must have!
       .concat(this.cyphers[this.blockIndex]);
-    // console.log(postPaddedCorrect, '-', postPaddedCorrect.length);
 
     for (let hexValue = 0; hexValue < 256; hexValue++) {
       if (hexValue % 16 === 0) {
@@ -169,15 +170,15 @@ class PaddingOracleAttack {
       }
 
       const cypher = preNoNeed
-        .concat(hexValue.toHex())
+        .concat(HexStr.instance(hexValue).value)
         .concat(postPaddedCorrect);
 
       // if integrity failed, means padding is correct!
       if (await this.sendRequest(cypher)) {
-        const foundDecrypted = '00'.toHex().xorWith(hexValue ^ this.paddingValue);
-        this.decrypted = foundDecrypted.concat(this.decrypted);
+        const found = HexStr.instance('00').xorWith(hexValue ^ this.paddingValue);
+        this.decrypted = found.value.concat(this.decrypted);
 
-        process.stdout.write(` - found ${foundDecrypted}\n`);
+        process.stdout.write(` - found ${found.value}\n`);
         break;
       }
 
@@ -214,27 +215,27 @@ class PaddingOracleAttack {
   }
 
   setUpCorrectPad() {
-    this.correctPad = this.cyphers.slice(-2)[0]
-      .toHex(BLOCK_SIZE / 2 -1)
+    const lastHex = this.cyphers.slice(-2)[0].slice(-2);
+    this.correctPad = HexStr.instance(lastHex)
       .xorWith(this.decrypted.substr(-2))
-      .toHex().num[0];
+      .toNumber()[0];
   }
 
   updateByCorrectPaddingValue() {
-    const correctDecrypted = this.cyphers.slice(-2)[0]
-      .toHex(BLOCK_SIZE / 2 - this.correctPad)
-      .xorWith(this.correctPad);
-    console.log(`correct padding value decrypted is: ${correctDecrypted}`);
+    const hex = this.cyphers.slice(-2)[0].slice(BLOCK_SIZE - this.correctPad * 2, 2);
+    const decrypted = HexStr.instance(hex).xorWith(this.correctPad).value;
+    console.log(`correct padding value decrypted is: ${decrypted}`);
 
-    this.decrypted = correctDecrypted.concat(this.decrypted);
+    this.decrypted = decrypted.concat(this.decrypted);
   }
 
   getPlainText() {
     const decrypted = this.decrypted.concat(this.decrypteds.join(''));
     const cyphers = this.cyphers.slice(0, -1).join('').substr(-decrypted.length);
-    return decrypted.toHex()
+    return HexStr.instance(decrypted)
       .xorWith(cyphers)
-      .toHex().toChar().join('')
+      .toChar()
+      .join('')
       .slice(0, -this.correctPad);
   }
 }

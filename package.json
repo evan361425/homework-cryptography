@@ -1,26 +1,26 @@
 {
-  "author": "Shueh Chou Lu <evanlu361425@gmail.com>",
-  "dependencies": {},
+  "name": "cryptography-homework",
   "description": "cryptography homework",
+  "license": "MIT",
+  "author": "Shueh Chou Lu <evanlu361425@gmail.com>",
+  "main": "src/index.js",
+  "scripts": {
+    "hash-video": "jasmine src/hash-video.js --config=jasmine.json",
+    "lint": "eslint src/*.js && npx sort-package-json package.json",
+    "many-time-attack": "jasmine src/many-time-attack.js --config=jasmine.json",
+    "padding-oracle-attack": "jasmine src/padding-oracle-attack.js --config=jasmine.json",
+    "playground": "jasmine src/playground.js --config=jasmine.json",
+    "rsa-close-factor-attack": "jasmine src/rsa-close-factor-attack.js --config=jasmine.json",
+    "rsa-meet-in-middle-attack": "jasmine src/rsa-meet-in-middle-attack.js --config=jasmine.json",
+    "test": "jasmine \"src/!(playground).js\" --config=jasmine.json"
+  },
   "devDependencies": {
     "big-integer": "1.6.48",
     "eslint": "7.15.0",
     "eslint-config-google": "0.14.0",
     "eslint-plugin-jasmine": "4.1.1",
-    "jasmine": "3.6.3"
-  },
-  "license": "MIT",
-  "main": "src/index.js",
-  "name": "cryptography-homework",
-  "scripts": {
-    "hash-video": "jasmine src/hash-video.js --config=jasmine.json",
-    "lint": "eslint src/*.js",
-    "many-time-attack": "jasmine src/many-time-attack.js --config=jasmine.json",
-    "padding-oracle-attack": "jasmine src/padding-oracle-attack.js --config=jasmine.json",
-    "playground": "jasmine src/playground.js --config=jasmine.json",
-    "rsa-meet-in-middle-attack": "jasmine src/rsa-meet-in-middle-attack.js --config=jasmine.json",
-    "rsa-close-factor-attack": "jasmine src/rsa-close-factor-attack.js --config=jasmine.json",
-    "test": "jasmine \"src/!(playground).js\" --config=jasmine.json"
-  },
-  "version": "1.0.0"
+    "jasmine": "3.6.3",
+    "sort-package-json": "1.48.0",
+    "workerpool": "6.0.3"
+  }
 }

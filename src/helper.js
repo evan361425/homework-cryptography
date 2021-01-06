@@ -26,32 +26,13 @@ function writeFile(fileName, data) {
   fs.writeFileSync(fileName, JSON.stringify(data));
 }
 
-/**
- * Replace substring from start to replacement length
- * @param  {string} origin      original string
- * @param  {string} replacement replacement
- * @param  {int} startFrom      default is replace to last char
- * @return {string}             new string
- */
-function strReplace(origin, replacement, startFrom) {
-  if (startFrom === undefined) {
-    startFrom = origin.length - replacement.length;
-  }
-
-  return origin.slice(0, startFrom) +
-    replacement +
-    origin.slice(startFrom + replacement.length);
-}
-
 class HexStr {
   constructor(value) {
+    // is number
+    if (value.toFixed) {
+      value = value.toString(16).padStart(2, '0');
+    }
     this.value = value;
-    this.num = this.toNumber();
-  }
-
-  toArray() {
-    const result = this.value.match(/.{2}/g);
-    return result === null ? [] : result;
   }
 
   toNumber() {
@@ -59,38 +40,32 @@ class HexStr {
   }
 
   toChar() {
-    return this.num.map((num) => String.fromCharCode(num));
+    return this.toNumber().map((num) => String.fromCharCode(num));
+  }
+
+  toArray() {
+    const result = this.value.match(/.{2}/g);
+    return result === null ? [] : result;
   }
 
   xorWith(strOrHex) {
-    // check if is number
-    if (strOrHex.toFixed) {
-      strOrHex = strOrHex.toHex();
-    }
     // check is HexStr or String
-    const nums = (typeof strOrHex === 'string' || strOrHex instanceof String) ?
-      strOrHex.toHex().num :
-      strOrHex.num;
+    const nums = (strOrHex instanceof HexStr) ?
+      strOrHex.toNumber() :
+      HexStr.instance(strOrHex).toNumber();
 
-    return this.num
+    const result = this.toNumber()
       .map((num1, i) => nums[i] === undefined ? null : num1 ^ nums[i])
       .filter((el) => el !== null)
-      .map((num) => num.toHex())
+      .map((num) => num.toString(16).padStart(2, '0'))
       .join('');
+
+    return HexStr.instance(result);
+  }
+
+  static instance(hex) {
+    return new HexStr(hex);
   }
 }
-
-/* eslint-disable */
-String.prototype.toHex = function(index) {
-  if (index === undefined) {
-    return new HexStr(this);
-  }
-  const char = (new HexStr(this)).toArray()[index];
-  return char ? new HexStr(char) : new HexStr('');
-};
-Number.prototype.toHex = function() {
-  return this.toString(16).padStart(2, '0');
-};
-/* eslint-enable */
 
 module.exports = { joinPath, readFile, writeFile, strReplace, HexStr };
