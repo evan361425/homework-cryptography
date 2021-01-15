@@ -1,5 +1,6 @@
 const { readFile, writeFile } = require('./helper');
 const bigInt = require('big-integer');
+const workerpool = require('workerpool');
 
 /** @var {string} used folder */
 const FOLDER = 'rsa-meet-in-middle-attack';
@@ -61,57 +62,74 @@ describe('RSA Meet In Middle Attack', () => {
  */
 class RsaMimAttack {
   /**
-   * @param {bigInt} generator
-   * @param {bigInt} hold      generator ^ x = hold
-   * @param {bigInt} prime     Z[p]
-   * @param {bigInt} keySize
+   * @param {int|string} generator
+   * @param {int|string} hold      generator ^ x = hold
+   * @param {int|string} prime     Z[p]
+   * @param {int} keySize
    */
   constructor(generator, hold, prime, keySize) {
-    this.g = bigInt(generator);
-    this.h = bigInt(hold);
-    this.p = bigInt(prime);
-    this.keySize = keySize;
-    this.tableMax = bigInt(2).pow(this.keySize / 2).toJSNumber();
+    this.g = generator;
+    this.h = hold;
+    this.p = prime;
+    this.tableMax = Math.pow(2, +keySize / 2);
     this.consoleIter = Math.max(Math.floor(this.tableMax / 10), 2);
+    this.pool = workerpool.pool(`${__dirname}/worker/${FOLDER}.js`);
   }
 
   async attack() {
-    const table = await this.buildTable();
-    console.log(`\nRSA MIM Attack - Table Built!`);
-    return await this.hitTable(table);
+    try {
+      const table = await this.buildTable();
+      console.log(`\nRSA MIM Attack - Table Built!`);
+      return await this.hitTable(table);
+    } catch (e) {
+      this.pool.terminate();
+    }
   }
 
-  async buildTable() {
-    const table = {};
-    for (let x1 = 0; x1 <= this.tableMax; x1++) {
-      if (x1 % this.consoleIter === 0) {
-        process.stdout.clearLine();
-        process.stdout.cursorTo(0);
-        process.stdout.write(`RSA MIM Attack - table: ${(x1 / this.tableMax * 100).toFixed(0)}%`);
-      }
-      table[this.h.multiply(
-        this.g.modPow(x1, this.p).modInv(this.p),
-      ).mod(this.p)] = x1;
-    }
-    return table;
+  buildTable() {
+    return new Promise((resolve, reject) => {
+      const table = {};
+      const promises = Array.from({ length: this.tableMax + 1 }, (_, x1) => {
+        return this.pool
+          .exec('buildTable', [x1, this.g, this.h, this.p])
+          .then((result) => {
+            this.print('table', x1);
+            table[result] = x1;
+          })
+          .catch(reject);
+      });
+
+      Promise.all(promises).then(() => resolve(table));
+    });
   }
 
   async hitTable(table) {
-    const base = this.g.modPow(this.tableMax, this.p);
-    for (let x0 = 0; x0 <= this.tableMax; x0++) {
-      if (x0 % this.consoleIter === 0) {
-        process.stdout.clearLine();
-        process.stdout.cursorTo(0);
-        process.stdout.write(`RSA MIM Attack - hit: ${(x0 / this.tableMax * 100).toFixed(0)}%`);
-      }
-      if (table[base.modPow(x0, this.p)]) {
-        console.log(`Hit at x0: ${x0}, x1: ${table[base.modPow(x0, this.p)]}`);
-        return this.getXByX0X1(x0, table[base.modPow(x0, this.p)]);
-      }
-    }
+    const base = bigInt(this.g).modPow(this.tableMax, this.p).toString();
+    return new Promise((resolve, reject) => {
+      Array.from({ length: this.tableMax + 1 }, (_, x0) => {
+        return this.pool
+          .exec('hitTable', [x0, base, this.p])
+          .then((result) => {
+            if (table[result]) {
+              resolve(this.getXByX0X1(x0, table[result]));
+              this.pool.terminate(true);
+            }
+          })
+          .catch(reject);
+      });
+    });
   }
 
   getXByX0X1(x0, x1) {
     return bigInt(x0).multiply(this.tableMax).plus(x1);
+  }
+
+  print(prefix, x) {
+    x = +x;
+    if (x % this.consoleIter === 0) {
+      process.stdout.clearLine();
+      process.stdout.cursorTo(0);
+      process.stdout.write(`RSA MIM Attack - ${prefix}: ${(x / this.tableMax * 100).toFixed(0)}%`);
+    }
   }
 }

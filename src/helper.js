@@ -68,4 +68,4 @@ class HexStr {
   }
 }
 
-module.exports = { joinPath, readFile, writeFile, strReplace, HexStr };
+module.exports = { joinPath, readFile, writeFile, HexStr };
